@@ -1,0 +1,109 @@
+Which transmission got better fuel efficiency
+===============================================
+
+Executive Summary
+-----------------
+The **fuel efficiency** of of an automobile is relationship between the distance traveled and the amount of fuel consumed by the vehicle. Consumption can be expressed in terms of volume of fuel to travel a distance, or the distance travelled per unit volume of fuel consumed.
+One of the vehicle feature that contributes fuel effieciency is transmission mode of the vehicle.
+As part of Coursera Regression Models course project, I have analysed relation between(if any) vehicle transmesion mode and fuel economy.
+
+I am specifically interested in the effects of automatic vs manual transmission on the gas mileage. By looking at several possible models, I could see relationship does exist between fuel efficiency and transmission type, but that could also be due to other factors such as vehicle weight or number of cylenders. Correlation does not imply causation
+
+## Data
+
+Motor Trends data(1974) is used for the purpose of evaluating factors on fuel efficiency. This data is extracted from the 1974 Motor Trend US magazine, and contains fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models)
+
+```{r}
+data(mtcars)
+```
+##  Data Exploration
+```{r}
+names(mtcars)
+dim(mtcars)
+str(mtcars)
+```
+```
+A data frame with 32 observations on 11 variables.
+
+[, 1]   mpg	 Miles/(US) gallon
+[, 2]	 cyl	 Number of cylinders
+[, 3]	 disp	 Displacement (cu.in.)
+[, 4]	 hp	 Gross horsepower
+[, 5]	 drat	 Rear axle ratio
+[, 6]	 wt	 Weight (lb/1000)
+[, 7]	 qsec	 1/4 mile time
+[, 8]	 vs	 V/S
+[, 9]	 am	 Transmission (0 = automatic, 1 = manual)
+[,10]	 gear	 Number of forward gears
+[,11]	 carb	 Number of carburetors
+Source
+
+Henderson and Velleman (1981), Building multiple regression models interactively. Biometrics, 37, 391-411.
+```
+As we are interested in the relationshp between mpg and other variables, we first check the correlation between mpg and other variables.
+```{r}
+cor(mtcars$mpg,mtcars[,-1])
+```
+Looking at the correlation, Cylenders, Displacement, Horse power, Weight and Carbuetors are in inverse relation with mile per gallon.
+plots between these variables are included in Apprdix1.
+
+## Data Processing
+
+Adding new logical variable **automatic**  to **mtcars** which will be derived from  **am** .
+```{r ,warning=FALSE, echo=FALSE}
+mtcars$automatic <- mtcars$am == 0
+attach( mtcars )
+```
+## Regression Analysis
+I would like to use ordinary least squares (OLS) method for estimating the unknown parameters in a linear regression model. As this method minimizes the sum of squared vertical distances between the observed responses in the dataset and the responses predicted by the linear approximation.
+
+```{r}
+olsModel <- lm( mpg ~ automatic, data=mtcars )
+summary(olsModel )
+```
+Looking at model output, it prooves that transmission type automatic have negative effect on fuel efficiency.
+
+I tried stepwise algorithm to choose the best model.
+```{r}
+model1 = step(lm(data = mtcars, mpg ~ .),trace=0,steps=10000)
+summary(model1)
+```
+Looking at the results, we have a model which includes 3 variables wt, qsec and am and this model captured 0.8497 of total variance. 
+This model can be further optimize our model, we examine mpg ~ wt + qsec and controled by am
+```{r}
+model2 <- lm(mpg~ factor(am):wt + factor(am):qsec,data=mtcars)
+summary(model2)
+```
+total variance is increased to 89%.
+## Summary
+The improvised model captured 89.5% of total variance. 
+* There is a statistically significant relationship between fuel economy and transmission type.
+* For every 1000 lbs increase in weight, for automatic vehicles mpg decreased by 3.176 and for manual vehicles mpg decreased by 6.09 miles. 
+* For every  ¼ mile accelaration speed droped, for automatic vehicles mpg increased by 0.834 and manual mpg increased by 1.446 miles. 
+* In conclusion, the mpg is largely determined by the interplay between weight, accelaration and tramsmission.
+* Two confounding variables - 'weight' and 'quarter-mile time' play a part, and accounting for these reduces the observed effect of transmission type on fuel economy.
+* Accounting for the effects of the confounding variables, our model suggests that a manual transmission vehicle will achieve fuel economy ~29.4mpg better than a vehicle with automatic transmission.
+
+## Appendix
+```{r}
+pairs(mtcars[c("mpg","cyl","disp" ,"wt", "am", "carb")], panel = panel.smooth)
+
+mtcarsAuto <- with(mtcars, mean(mpg[am==0]))
+mtcarsManual <- with(mtcars, mean(mpg[am==1]))
+fit <- lm(mpg ~ am, data=mtcars)
+plotModel <- lm(mpg ~ I(am + 1), data=mtcars)
+
+with(mtcars, plot(factor(am, labels=c("Automatic", "Manual")), mpg,
+     main="Fuel Economy - Automatic and Manual Transmission",
+     xlab="Transmission Type", ylab="Fuel Economy (mpg)"))
+abline(plotModel, col='blue')
+points(1, mtcarsAuto, col='blue')
+points(2, mtcarsManual, col='blue')
+```
+
+
+## References
+1. [Fuel economy in automobiles](http://en.wikipedia.org/wiki/Fuel_economy_in_automobiles) 
+2. [Motor Trend Car Road Tests](http://stat.ethz.ch/R-manual/R-devel/library/datasets/html/mtcars.html)
+3. [Correlation does not imply causation](http://en.wikipedia.org/wiki/Correlation_does_not_imply_causation)
+4. [Ordinary least squares](http://en.wikipedia.org/wiki/Ordinary_least_squares)
